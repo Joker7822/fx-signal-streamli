@@ -23,10 +23,13 @@ df = load_data()
 # -------------------------
 # 特徴量生成（未来リーク防止のためshiftあり）
 # -------------------------
-sma_indicator = ta.trend.SMAIndicator(close=df["Close"], window=10)
+close_series = df["Close"].squeeze()
+
+sma_indicator = ta.trend.SMAIndicator(close=close_series, window=10)
 df["sma10"] = sma_indicator.sma_indicator().shift(1)
 
-df["rsi"] = ta.momentum.rsi(df["Close"], window=14).shift(1)
+rsi_indicator = ta.momentum.RSIIndicator(close=close_series, window=14)
+df["rsi"] = rsi_indicator.rsi().shift(1)
 
 # ラベル生成（未来情報を参照しない）
 df["target"] = (df["Close"].shift(-1) > df["Close"]).astype(int)
