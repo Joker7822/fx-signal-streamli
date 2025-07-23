@@ -1,5 +1,5 @@
 # fx_signal_streamlit.py
-# 完全無料・無登録で実行可能なFX売買シグナル予測アプリ（Streamlit対応）
+# 完全無料・無登録で実行可能なFX売買シグナル予測アプリ（Streamlit対応・売買タイミング表示付き）
 
 import yfinance as yf
 import pandas as pd
@@ -44,7 +44,6 @@ features = ["sma10", "rsi"]
 X = df[features]
 y = df["target"]
 
-# 時系列に従って80%訓練、20%テスト
 train_size = int(len(X) * 0.8)
 X_train, X_test = X.iloc[:train_size], X.iloc[train_size:]
 y_train, y_test = y.iloc[:train_size], y.iloc[train_size:]
@@ -65,11 +64,26 @@ df["cumulative_profit"] = df["profit"].cumsum()
 # -------------------------
 # Streamlit 表示
 # -------------------------
-st.title("FX 売買シグナル予測アプリ（無料・無登録）")
+st.title("FX 売買シグナル予測アプリ（売買タイミング表示付き）")
 
-st.subheader("為替チャート (USD/JPY)")
-st.line_chart(df["Close"])
+st.subheader("為替チャートと売買タイミング")
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(df.index, df["Close"], label="Close", color='blue', alpha=0.5)
 
+# 売買タイミングプロット（予測が1のときだけ）
+buy_signals = df[(df["prediction"] == 1)]
+sell_signals = df[(df["prediction"] == 0)]
+
+ax.scatter(buy_signals.index, buy_signals["Close"], label="Buy", marker="^", color="green", s=50)
+ax.scatter(sell_signals.index, sell_signals["Close"], label="No Buy", marker="v", color="red", s=30)
+
+ax.set_title("USD/JPY と予測シグナル")
+ax.legend()
+st.pyplot(fig)
+
+# -------------------------
+# 損益情報
+# -------------------------
 st.subheader("予測に基づく累積損益（仮想トレード）")
 st.line_chart(df["cumulative_profit"])
 
