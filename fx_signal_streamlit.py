@@ -1,5 +1,5 @@
-# fx_signal_streamlit_signals_full.py
-# 買い・売りシグナルを可視化するFX売買シグナル予測アプリ
+# fx_signal_streamlit_signals_status.py
+# 現在の買い/売りシグナル表示付き FX 予測アプリ
 
 import yfinance as yf
 import pandas as pd
@@ -21,15 +21,11 @@ def load_data():
 df = load_data()
 
 # -------------------------
-# 特徴量（未来リーク防止）
+# 特徴量生成（未来リーク防止）
 # -------------------------
 close_series = df["Close"].squeeze()
-sma = ta.trend.SMAIndicator(close=close_series, window=10).sma_indicator().shift(1)
-rsi = ta.momentum.RSIIndicator(close=close_series, window=14).rsi().shift(1)
-df["sma10"] = sma
-df["rsi"] = rsi
-
-# ラベル：翌日上がる→1（買い）、下がる→0（売り）
+df["sma10"] = ta.trend.SMAIndicator(close=close_series, window=10).sma_indicator().shift(1)
+df["rsi"] = ta.momentum.RSIIndicator(close=close_series, window=14).rsi().shift(1)
 df["target"] = (df["Close"].shift(-1) > df["Close"]).astype(int)
 df.dropna(inplace=True)
 
@@ -58,28 +54,33 @@ df.loc[df["prediction"] == 0, "profit"] = df["entry_price"] - df["exit_price"]
 df["cumulative_profit"] = df["profit"].cumsum()
 
 # -------------------------
+# 現在のシグナルを判定
+# -------------------------
+latest_signal = df["prediction"].iloc[-1]
+latest_label = "買い時 (BUY ↑)" if latest_signal == 1 else "売り時 (SELL ↓)"
+latest_color = "✅🟢" if latest_signal == 1 else "⚠️🔴"
+
+# -------------------------
 # Streamlit 表示
 # -------------------------
-st.title("FX 売買シグナル予測アプリ（買い・売り表示）")
+st.title("FX 売買シグナル予測アプリ（買い/売り状況表示）")
+
+st.header(f"📌 現在のシグナル: {latest_color} {latest_label}")
 
 st.subheader("チャートと売買シグナル")
 fig, ax = plt.subplots(figsize=(10, 4))
 ax.plot(df.index, df["Close"], label="Close", color='blue', alpha=0.5)
-
 buy_signals = df[df["prediction"] == 1]
 sell_signals = df[df["prediction"] == 0]
-
 ax.scatter(buy_signals.index, buy_signals["Close"], label="Buy (↑)", marker="^", color="green", s=50)
 ax.scatter(sell_signals.index, sell_signals["Close"], label="Sell (↓)", marker="v", color="red", s=50)
-
-ax.set_title("USD/JPY - 売買シグナル表示")
+ax.set_title("USD/JPY - 売買シグナル")
 ax.legend()
 st.pyplot(fig)
 
 st.subheader("累積損益（仮想トレード）")
 st.line_chart(df["cumulative_profit"])
 
-# メトリクス
 total_profit = df["cumulative_profit"].iloc[-1]
 win_trades = (df["profit"] > 0).sum()
 total_trades = len(df[df["prediction"].notnull()])
